@@ -56,9 +56,9 @@ def quadratic_weighted_kappa(rater_a, rater_b,
     """
     assert(len(rater_a) == len(rater_b))
     if min_rating is None:
-	min_rating = min(reduce(min, rater_a), reduce(min, rater_b))
+	    min_rating = min(reduce(min, rater_a), reduce(min, rater_b))
     if max_rating is None:
-	max_rating = max(reduce(max, rater_a), reduce(max, rater_b))
+	    max_rating = max(reduce(max, rater_a), reduce(max, rater_b))
     conf_mat = confusion_matrix(rater_a, rater_b,
 				     min_rating, max_rating)
     num_ratings = len(conf_mat)
@@ -71,12 +71,12 @@ def quadratic_weighted_kappa(rater_a, rater_b,
     denominator = 0.0
 
     for i in range(num_ratings):
-	for j in range(num_ratings):
-	    expected_count = (hist_rater_a[i]*hist_rater_b[j]
-			      / num_scored_items) 
-	    d = pow(i-j,2.0) / pow(num_ratings-1, 2.0)
-	    numerator += d*conf_mat[i][j] / num_scored_items
-	    denominator += d*expected_count / num_scored_items
+        for j in range(num_ratings):
+            expected_count = (hist_rater_a[i]*hist_rater_b[j]
+                    / num_scored_items) 
+            d = pow(i-j,2.0) / pow(num_ratings-1, 2.0)
+            numerator += d*conf_mat[i][j] / num_scored_items
+            denominator += d*expected_count / num_scored_items
 
     return 1.0 - numerator / denominator
 
@@ -104,27 +104,27 @@ def linear_weighted_kappa(rater_a, rater_b,
     """
     assert(len(rater_a) == len(rater_b))
     if min_rating is None:
-	min_rating = min(reduce(min, rater_a), reduce(min, rater_b))
+	    min_rating = min(reduce(min, rater_a), reduce(min, rater_b))
     if max_rating is None:
-	max_rating = max(reduce(max, rater_a), reduce(max, rater_b))
-    conf_mat = confusion_matrix(rater_a, rater_b,
-				     min_rating, max_rating)
-    num_ratings = len(conf_mat)
-    num_scored_items = float(len(rater_a))
+        max_rating = max(reduce(max, rater_a), reduce(max, rater_b))
+        conf_mat = confusion_matrix(rater_a, rater_b,
+                        min_rating, max_rating)
+        num_ratings = len(conf_mat)
+        num_scored_items = float(len(rater_a))
 
-    hist_rater_a = histogram(rater_a, min_rating, max_rating)
-    hist_rater_b = histogram(rater_b, min_rating, max_rating)
+        hist_rater_a = histogram(rater_a, min_rating, max_rating)
+        hist_rater_b = histogram(rater_b, min_rating, max_rating)
 
-    numerator = 0.0
-    denominator = 0.0
+        numerator = 0.0
+        denominator = 0.0
 
     for i in range(num_ratings):
-	for j in range(num_ratings):
-	    expected_count = (hist_rater_a[i]*hist_rater_b[j]
-			      / num_scored_items) 
-	    d = abs(i-j) / float(num_ratings-1)
-	    numerator += d*conf_mat[i][j] / num_scored_items
-	    denominator += d*expected_count / num_scored_items
+        for j in range(num_ratings):
+            expected_count = (hist_rater_a[i]*hist_rater_b[j]
+                    / num_scored_items) 
+            d = abs(i-j) / float(num_ratings-1)
+            numerator += d*conf_mat[i][j] / num_scored_items
+            denominator += d*expected_count / num_scored_items
 
     return 1.0 - numerator / denominator
 
@@ -152,9 +152,9 @@ def kappa(rater_a, rater_b,
     """
     assert(len(rater_a) == len(rater_b))
     if min_rating is None:
-	min_rating = min(reduce(min, rater_a), reduce(min, rater_b))
+	    min_rating = min(reduce(min, rater_a), reduce(min, rater_b))
     if max_rating is None:
-	max_rating = max(reduce(max, rater_a), reduce(max, rater_b))
+	    max_rating = max(reduce(max, rater_a), reduce(max, rater_b))
     conf_mat = confusion_matrix(rater_a, rater_b,
 				     min_rating, max_rating)
     num_ratings = len(conf_mat)
@@ -167,15 +167,15 @@ def kappa(rater_a, rater_b,
     denominator = 0.0
 
     for i in range(num_ratings):
-	for j in range(num_ratings):
-	    expected_count = (hist_rater_a[i]*hist_rater_b[j]
-			      / num_scored_items) 
-	    if i==j:
-	        d=0.0
-	    else:
-	        d=1.0
-	    numerator += d*conf_mat[i][j] / num_scored_items
-	    denominator += d*expected_count / num_scored_items
+        for j in range(num_ratings):
+            expected_count = (hist_rater_a[i]*hist_rater_b[j]
+                    / num_scored_items) 
+            if i==j:
+                d=0.0
+            else:
+                d=1.0
+            numerator += d*conf_mat[i][j] / num_scored_items
+            denominator += d*expected_count / num_scored_items
 
     return 1.0 - numerator / denominator
 
