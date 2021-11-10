@@ -4,7 +4,7 @@
 <h2><strong><italic>Research Paper Implementation</italic></strong></h2>
 A comprehensive implementation of the paper <a href='https://www.sciencedirect.com/science/article/abs/pii/S0950584914001591'>Software defect prediction using ensemble learning on selected features.</a>
 
-The paper was presented by <strong>Dr.Lahouari Ghouti</strong> at Prince Sultan Univserity in the Software Analytics course (SE480).
+The paper was presented by <strong><a href='https://www.linkedin.com/in/dr-lahouari-ghouti/'>Dr.Lahouari Ghouti</a></strong> at Prince Sultan Univserity in the Software Analytics course (SE480).
 
 The implementation was benchmarked on the <a href='https://figshare.com/articles/dataset/Software_Defect_Prediction_Dataset/13536506/1'>Ant 1.7</a> public dataset for software metrics. According to the paper this particular dataset achieved the highest performance with the proposed APE.
 
@@ -12,130 +12,255 @@ The implementation was benchmarked on the <a href='https://figshare.com/articles
 - [Software Defect Prediction using Ensemble Learning on Selected Features](#software-defect-prediction-using-ensemble-learning-on-selected-features)
 - [Table of contents](#table-of-contents)
 - [Approach](#approach)
-    - [Used Models](#used-models)
-    - [Training Pipeline](#training-pipeline)
-    - [Solve Class Imbalance](#solve-class-imbalance)
-    - [Individual Results](#individual-results)
-    - [Average Probability Estimator](#average-probability-estimator)
-- [Conclusion](#conclusion)
+  - [Used Models](#used-models)
+  - [Feature Selection](#feature-selection)
+    - [Sequential Forward Selection](#sequential-forward-selection)
+  - [Training Pipeline](#training-pipeline)
+  - [Solve Class Imbalance](#solve-class-imbalance)
+  - [Individual Results](#individual-results)
+  - [Average Probability Estimator](#average-probability-estimator)
+- [Ensembles Comparison](#ensembles-comparison)
 - [Contribute](#contribute)
 
+<a id="approach"></a>
 # Approach
 
-After adding the extension to Chrome/Firefox, it will light-up every time you load a compatible website.
+The approach for this implementation was to follow mostly all research paper details in order to come up with a comprehensive implementation for the paper covering almost all aspects such as Feature Selection, Stratified K Fold CV, and other presented techniques.
 
-When a page is loaded, the extension would hide all the images in the page and only show images that have been classified as **NOT NSFW**.
+The paper presented an AI system that helps in Software Defect Prediction by applying <strong><em>Heterogeneous Ensemble</em></strong>.
+<img src='https://d3i71xaburhd42.cloudfront.net/e2600cbc04da3284b61ef72223403f1dca3d2a98/3-Figure1-1.png'></img>
 
-You can toggle(off/on) the extension from the ```chrome://extensions``` page in Chrome and ```about:debugging#/runtime/this-firefox``` in Firefox.
+Heterogeneous Ensemble is a ML technique in which several models trained on the same dataset. These models can differ in the learning algorithm, hyperparameters, or could be the same. After training the <strong>Voting Classifier</strong> will contain all trained models in order to apply voting.
 
-Open popup window to change NSFW Filter settings
+The voting was done based on models weights which is <strong>Weighted Average Ensemble</strong> which means that models that have more weights on the data will eventually be involved more in the voting.
 
-<table>
-  <tr>
-    <td vlign="center">
-      <img src="./demo/images/pin_popup.png" alt="Pin popup window">
-    </td>
-    <td vlign="center">
-      <img src="./demo/images/popup.png" alt="Popup window">
-    </td>
-  </tr>
-</table>
+<a id="used-models"></a>
+## Used Models
+The paper proposed using 7 models for building the voting system. As the paper states 7 was the optimal number of models for this solution as using more models will negatively impact the performance. Also, to avoid voting conflicts, the number of used models should be odd number to avoid conflicts situations.
 
-### Used Models
-
-To install the developer version follow the steps below. To just use the extension download from [**chrome.google.com/webstore/nsfw-filter**](https://chrome.google.com/webstore/detail/nsfw-filter/kmgagnlkckiamnenbpigfaljmanlbbhh)
-
-To run development version in clean environment use command:
+The used models were the following:
 
 ```sh
-npm run dev:chrome
+SVC(probability=True)
+MultinomialNB()
+BernoulliNB()
+RandomForestClassifier()
+GradientBoostingClassifier()
+SGDClassifier(loss='log')
+LogisticRegression()
 ```
 
-Or open Google Chrome and open the Extension Management page by navigating to ```chrome://extensions``` or by opening Settings and clicking Extensions from the bottom left.
+Several <strong>Hyperparameters</strong> tuning was done using <code>GridSearchCV</code> to achieve the best performing model with the corresponding <strong>Hyperparameters</strong>.
 
-Enable Developer Mode by clicking the toggle switch next to Developer mode.
+<a id="feature-selection"></a>
+## Feature Selection
+As the paper title states, Feature Selection was done to increase preformance and get rid of unnecessary features. The paper comapred between different selection approaches such as Fisher, Chi, and Greedy. Based on the results Greedy method reported the best results and showed that a very few number of feautres contributes to the output. 
 
-Click the "Load Unpacked" button and select the extension directory(```.../dist```).
+For applying Feature Selection, the following implementation used <code>MLXTEND</code> library which comes with ready made functions for applying several Feature Selection approaches depending on the use case.
 
-<p align="center">
-  <img src="./demo/images/install_instructions.png" alt="Install Instructions">
-<p/>
+<a id="sequential-forward-selection"></a>
+### Sequential Forward Selection
+The following is an example of the <strong>Sequential Forward Selection</strong> that was applied taken from <code>MLXTEND</code> <a href='http://rasbt.github.io/mlxtend/user_guide/feature_selection/SequentialFeatureSelector/'>documentation</a>.
+```sh
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 
-Voila! The extension is now installed and ready to be used!
+sfs1 = SFS(knn, 
+           k_features=3, 
+           forward=True, 
+           floating=False, 
+           verbose=2,
+           scoring='accuracy',
+           cv=0)
 
-### Training Pipeline
+sfs1 = sfs1.fit(X, y)
+```
+<a id='training-pipeline'></a>
+## Training Pipeline
+In order to make things easier and reusable, the implementation built a training pipeline for each classifier putting the processing and tuning steps in that pipeline. 
+The pipeline consisted of:
+* Feature Selection
+* Feature Scaling
+* Training
 
-To install the developer version follow the steps below. To just use the extension download from [**addons.mozilla/nsfw-filter**](https://addons.mozilla.org/en-US/firefox/addon/nsfw-filter/)
-
-To run development version in clean environment use command:
+After that the pipeline was inserted into a <code>GridSearchCV</code> for applying <strong>Hyperparameters Tuning</strong>
 
 ```sh
-npm run dev:firefox
+  # Data will be scaled with Standard Scaler first
+  scaler = StandardScaler()
+
+  # Feature selection will be applied with 10 - 15 features
+  sfs = SFS(estimator=LogisticRegression(max_iter = 3500), 
+            k_features=10,
+            forward=True, 
+            floating=False, 
+            scoring='accuracy',
+            cv=2)
+
+  # Logisitc Regression classifier is trained
+  clf = LogisticRegression()
+```
+```sh
+  steps = [
+      ('sfs', sfs), 
+      ('scaler', scaler), 
+      ('clf', clf)
+  ]
+
+  pipeline = Pipeline(steps)
+
+  # Hyperparameters for GridSearch CV
+
+  param_range_fl = [1.0, 0.5]
+
+  grid_params_lr = [{
+          'clf__penalty': ['l1', 'l2'],
+          'clf__C': param_range_fl,
+          'clf__solver': ['liblinear'],
+          'sfs__k_features': [10, 15]
+  }] 
+```
+<a id='solve-class-imbalance'></a>
+## Solve Class Imbalance
+One of the main problems that was presented in this dataset was that there is a huge visible class imbalance in the dataset. The difference between the two classes was more than 80% which will eventually cause a huge overfitting for the models regardless of the used algorithm.
+
+There are mainly two solutions presented for this issue. Both solutions were tested and one of them overcomed the other.
+  * <strong>Synthetic Minority Oversampling Technique (SMOTE)</strong>
+    
+    This technique works by applying data resampling. Either by generating synthetic data for the underwhelming class <code>Oversampling</code> or discarding some records from the overwhelming class <code>Undersampling</code>. This technique resulted in a significant improvement in modles performance but there was a much better solution.
+
+  * <strong>Stratified K Fold Cross Validation</strong>
+
+    Implementing the concept of stratified sampling in cross-validation ensures the training and test sets have the same proportion of the feature of interest as in the original dataset. Doing this with the target variable ensures that the cross-validation result is a close approximation of generalization error. This technique resulted in a better performance and discarded the need of either creating synthetic data or removing data. 
+
+<a class='individual-results'></a>    
+## Individual Results
+Before creating the <code>(Average Probability Estimator) APE</code> voting system, each model was trained in previous individually and saved.
+The following table summerizes each model performance metrics:
+<center>
+  <table>
+    <tr>
+      <th>Model</th>
+      <th>Overall Test Accuracy</th>
+    </tr>
+    <tr>
+      <td>Logisitc Regression</td>
+      <td>%82.66</td>
+    </tr>
+    <tr>
+      <td>Bernouli Naive Bayes</td>
+      <td>%77.70</td>
+    </tr>
+    <tr>
+      <td>Gradient Boost</td>
+      <td>%82.35</td>
+    </tr>
+      <tr>
+      <td>Multinomial Naive Bayes</td>
+      <td>%77.98</td>
+    </tr>
+      <tr>
+      <td>Random Forest</td>
+      <td>%80.66</td>
+    </tr>
+      <tr>
+      <td>Stochastic Gradient Descent</td>
+      <td>%82.41</td>
+    </tr>
+      <tr>
+      <td>Support Vector Machines - SVC</td>
+      <td>%81.20</td>
+    </tr>
+  </table>
+</center>
+
+<a class='average-probability-estimator'></a>    
+## Average Probability Estimator
+The weighted voting method assigns various weights to the classifiers based on specific criteria and takes a vote of the classifiers based on the weight. In this work, the weight of each classifier would be chosen based on the performance accuracy of the classifier based on the testing set. 
+
+A weighted ensemble is an extension of a model averaging ensemble where the contribution of each member to the final prediction is weighted by the performance of the model.
+
+First all models were loaded and evaluated on the Test set in order to get their weights and apply the <strong>Weighted Ensemble</strong> based on them.
+```sh
+  # load models with pickle
+  bnb = pickle.load(open('models/bnb.sav', 'rb'))
+  gb = pickle.load(open('models/gb.sav', 'rb'))
+  lr = pickle.load(open('models/lr.sav', 'rb'))
+  mnb = pickle.load(open('models/mnb.sav', 'rb'))
+  rf = pickle.load(open('models/rf.sav', 'rb'))
+  svc = pickle.load(open('models/svc.sav', 'rb'))
+  sgd = pickle.load(open('models/sgd.sav', 'rb'))
+
+  # dump them into a list
+  def get_models():
+      models = list()
+      
+      models.append(('bnb', bnb))
+      models.append(('gb', gb))
+      models.append(('lr', lr))
+      models.append(('mnb', mnb))
+      models.append(('rf', rf))
+      models.append(('sgd', sgd))
+      models.append(('svc', svc))
+      
+      return models
+```
+```sh
+  # evaluate each base model
+  def evaluate_models(models, X_test, y_test):
+      # fit and evaluate the models
+      scores = list()
+      for name, model in models:
+          # predict the test set
+          yhat = model.predict(X_test)
+          # find the accuracy
+          acc = accuracy_score(y_test, yhat)
+          # store the performance
+          scores.append(acc)
+          # report model performance
+      return scores
+
+  # get models
+  models = get_models()
+
+  # get models weights
+  scores = evaluate_models(models, X_test, y_test)
+```
+The <code>scores</code> variable contains all models performance on the test set which will play a key part in the voting later on.
+
+After that <code>VotingClassifier</code> was implemented which estimators were the trained models previously and weights were the scores evaluated previously as well.
+
+```sh
+from sklearn.ensemble import VotingClassifier
+
+ensemble = VotingClassifier(estimators = models, voting = 'soft', weights = scores)
 ```
 
-Or open Firefox and open the Debug Add-ons page by navigating to ```about:debugging#/runtime/this-firefox``` or by selecting it from Settings dropdown in the add-ons page.
+<a id='ensemble-comparison'></a>
+# Ensembles Comparison
 
-Click Load Temporary Add-on and select the ```manifest.json``` file from the ```.../dist``` directory.
+The aim of this paper was to develop an AI system that helps in Software Defect Prediction by applying advanced techniques in order to come up with the best performance. The paper also compared between several ensemble models which are <code>W-SVM</code> and <code>RandomForest</code>. 
+<center>
+  <table>
+    <tr>
+      <th>Ensemble Model</th>
+      <th>Test Accuracy</th>
+    </tr>
+    <tr>
+      <td>APE (proposed)</td>
+      <td>%82.81</td>
+    </tr>
+    <tr>
+      <td>Random Forest</td>
+      <td>%81.20</td>
+    </tr>
+    <tr>
+      <td>Weighted Support Vector Machines</td>
+      <td>%72.89</td>
+    </tr>
+  </table>
+</center>
 
-<p align="center">
-  <img src="./demo/images/install_instructions_firefox.png" width="470px" alt="Install Instructions">
-<p/>
-
-### Solve Class Imbalance
-### Individual Results
-### Average Probability Estimator
-
-
-# Conclusion
-
-That's it! The extension is now ready to be used in Firefox!
-<!--
-### Activity Diagram
-
-![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/nsfw-filter/nsfw-filter/master/demo/UML/activity-diagram.plantuml)
--->
+<a id='contribute'></a>
 # Contribute
-
-Please check the [**Contributing Guidelines**](https://github.com/navendu-pottekkat/nsfw-filter/blob/master/.github/markdown/CONTRIBUTING.md) before contributing.
-
-You can also sponsor on [**Open Collective**](https://opencollective.com/nsfwfilter/donate) or [**become a Patron**](https://www.patreon.com/bePatron?u=41162696).
-
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tr>
-    <td align="center"><a href="https://github.com/YegorZaremba"><img src="https://avatars3.githubusercontent.com/u/31797554?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yegor <3</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/commits?author=YegorZaremba" title="Code">💻</a> <a href="#design-YegorZaremba" title="Design">🎨</a> <a href="#ideas-YegorZaremba" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="http://navendu.me"><img src="https://avatars1.githubusercontent.com/u/49474499?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Navendu Pottekkat</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/commits?author=navendu-pottekkat" title="Code">💻</a> <a href="#content-navendu-pottekkat" title="Content">🖋</a> <a href="https://github.com/nsfw-filter/nsfw-filter/commits?author=navendu-pottekkat" title="Documentation">📖</a> <a href="#design-navendu-pottekkat" title="Design">🎨</a> <a href="#ideas-navendu-pottekkat" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/anonacc"><img src="https://avatars3.githubusercontent.com/u/64102225?v=4?s=100" width="100px;" alt=""/><br /><sub><b>anonacc</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Aanonacc" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="https://github.com/abhirammltr"><img src="https://avatars1.githubusercontent.com/u/32649851?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Abhiram V V</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/commits?author=abhirammltr" title="Code">💻</a> <a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Aabhirammltr" title="Bug reports">🐛</a> <a href="#ideas-abhirammltr" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/yxlin118"><img src="https://avatars1.githubusercontent.com/u/54916304?v=4?s=100" width="100px;" alt=""/><br /><sub><b>yxlin118</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Ayxlin118" title="Bug reports">🐛</a> <a href="#ideas-yxlin118" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://clay.sh"><img src="https://avatars3.githubusercontent.com/u/16675291?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Clay McGinnis</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/pulls?q=is%3Apr+reviewed-by%3AClayMav" title="Reviewed Pull Requests">👀</a></td>
-    <td align="center"><a href="https://www.youtube.com/channel/UCPGv2tVqEt6iBFnnMTjnRBA"><img src="https://avatars1.githubusercontent.com/u/6668371?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Brady Dowling</b></sub></a><br /><a href="#ideas-bradydowling" title="Ideas, Planning, & Feedback">🤔</a></td>
-  </tr>
-  <tr>
-    <td align="center"><a href="http://littlebluelabs.com"><img src="https://avatars2.githubusercontent.com/u/32261?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Mike Crittenden</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/commits?author=mikecrittenden" title="Documentation">📖</a></td>
-    <td align="center"><a href="https://github.com/garfieldbanks"><img src="https://avatars3.githubusercontent.com/u/12904270?v=4?s=100" width="100px;" alt=""/><br /><sub><b>garfieldbanks</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Agarfieldbanks" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="https://github.com/TitusRobyK"><img src="https://avatars1.githubusercontent.com/u/32787952?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Titus Roby K</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3ATitusRobyK" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="https://github.com/hsusanoo"><img src="https://avatars2.githubusercontent.com/u/35850056?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Haitam</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Ahsusanoo" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="https://github.com/lizhendong128"><img src="https://avatars3.githubusercontent.com/u/24618122?v=4?s=100" width="100px;" alt=""/><br /><sub><b>lizhendong128</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Alizhendong128" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="https://github.com/Woctor-Dho"><img src="https://avatars3.githubusercontent.com/u/25572322?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Woctor-Dho</b></sub></a><br /><a href="#ideas-Woctor-Dho" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/miaokun-normal"><img src="https://avatars2.githubusercontent.com/u/67724210?v=4?s=100" width="100px;" alt=""/><br /><sub><b>miaokun-normal</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Amiaokun-normal" title="Bug reports">🐛</a></td>
-  </tr>
-  <tr>
-    <td align="center"><a href="https://christopher-bradshaw.com"><img src="https://avatars1.githubusercontent.com/u/1205871?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Christopher Bradshaw</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Akitsune7" title="Bug reports">🐛</a></td>
-    <td align="center"><a href="https://github.com/wingman-jr-addon"><img src="https://avatars3.githubusercontent.com/u/55339824?v=4?s=100" width="100px;" alt=""/><br /><sub><b>wingman-jr-addon</b></sub></a><br /><a href="#ideas-wingman-jr-addon" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/Andrewrick1"><img src="https://avatars2.githubusercontent.com/u/31154843?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Sagar paul</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/commits?author=Andrewrick1" title="Documentation">📖</a></td>
-    <td align="center"><a href="https://github.com/govza"><img src="https://avatars0.githubusercontent.com/u/1425574?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Rasul</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3Agovza" title="Bug reports">🐛</a> <a href="https://github.com/nsfw-filter/nsfw-filter/commits?author=govza" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/Gother01"><img src="https://avatars2.githubusercontent.com/u/65875436?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Aldulkadir Beceri</b></sub></a><br /><a href="https://github.com/nsfw-filter/nsfw-filter/issues?q=author%3AGother01" title="Bug reports">🐛</a></td>
-  </tr>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+The paper was presented by <strong><a href='https://www.linkedin.com/in/dr-lahouari-ghouti/'>Dr. Lahouari Ghouti</a></strong> Associate Professor in Computer Science at Prince Sultan University. Dr. Lahouari presented the paper to his students in the course Software Analytics (SE480) and the paper was implemented by one of his students <strong><a href='https://www.linkedin.com/in/mohammed-abed-itil%C2%AE-b9a60186/'>Mohammed Abed</a></strong> later on.
+ 
